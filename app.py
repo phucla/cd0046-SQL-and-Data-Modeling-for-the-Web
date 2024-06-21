@@ -3,30 +3,41 @@
 #----------------------------------------------------------------------------#
 
 import json
+import sys
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for
+from flask import (
+    Flask,
+    render_template,
+    request,
+    flash,
+    redirect,
+    url_for
+)
 from flask_moment import Moment
-from flask_sqlalchemy import SQLAlchemy
 import logging
 from logging import Formatter, FileHandler
-from flask_wtf import Form
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import desc
 from forms import *
+from sqlalchemy.exc import SQLAlchemyError
+from collections import OrderedDict
+from models import connect_db
+from flask_migrate import Migrate
+
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
 
 app = Flask(__name__)
 moment = Moment(app)
-app.config.from_object('config')
-db = SQLAlchemy(app)
-
+db = connect_db(app)
+migrate = Migrate(app, db)
 # TODO: connect to a local postgresql database
 
 #----------------------------------------------------------------------------#
 # Models.
 #----------------------------------------------------------------------------#
-
 class Venue(db.Model):
     __tablename__ = 'Venue'
 
@@ -38,8 +49,17 @@ class Venue(db.Model):
     phone = db.Column(db.String(120))
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
-
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
+    image_link = db.Column(db.String(500))
+    website_link = db.Column(db.String(120))
+    seeking_talent = db.Column(db.Boolean, default=False)
+    seeking_description = db.Column(db.String(500))
+    created_date = db.Column(db.DateTime)
+    shows = db.relationship(
+        'Show',
+        backref='Venue',
+        lazy='joined',
+        cascade='all, delete')
+    
 
 class Artist(db.Model):
     __tablename__ = 'Artist'
@@ -52,10 +72,28 @@ class Artist(db.Model):
     genres = db.Column(db.String(120))
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
-
+    website_link = db.Column(db.String(120))
+    seeking_venue = db.Column(db.Boolean, default=False)
+    seeking_description = db.Column(db.String(500))
+    created_date = db.Column(db.DateTime)
+    shows = db.relationship(
+        'Show',
+        backref='Artist',
+        lazy='joined',
+        cascade='all, delete')
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
+class Show(db.Model):
+    __tablename__ = 'Show'
+
+    id = db.Column(db.Integer, primary_key=True)
+    artist_id = db.Column(
+        db.Integer,
+        db.ForeignKey('Artist.id'),
+        nullable=False)
+    venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id'), nullable=False)
+    start_time = db.Column(db.DateTime, nullable=False)
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -229,14 +267,14 @@ def create_venue_submission():
   # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
   return render_template('pages/home.html')
 
-@app.route('/venues/<venue_id>', methods=['DELETE'])
-def delete_venue(venue_id):
-  # TODO: Complete this endpoint for taking a venue_id, and using
-  # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
+# @app.route('/venues/<venue_id>', methods=['DELETE'])
+# def delete_venue(venue_id):
+#   # TODO: Complete this endpoint for taking a venue_id, and using
+#   # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
 
-  # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
-  # clicking that button delete it from the db then redirect the user to the homepage
-  return None
+#   # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
+#   # clicking that button delete it from the db then redirect the user to the homepage
+#   return None
 
 #  Artists
 #  ----------------------------------------------------------------
